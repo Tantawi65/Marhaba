@@ -1,9 +1,20 @@
 import 'dart:math';
-import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
+
+// Simple coordinate class to replace LatLng
+class Coordinate {
+  final double latitude;
+  final double longitude;
+  
+  const Coordinate(this.latitude, this.longitude);
+  
+  @override
+  String toString() => 'Coordinate($latitude, $longitude)';
+}
 
 class OfflineRoutingService {
   /// Calculate a simple offline route between two points
-  static RouteResult calculateRoute(LatLng start, LatLng end) {
+  static RouteResult calculateRoute(Coordinate start, Coordinate end) {
     final distance = _calculateDistance(start, end);
     final bearing = _calculateBearing(start, end);
     final duration = _estimateDuration(distance);
@@ -20,12 +31,16 @@ class OfflineRoutingService {
     );
   }
   
-  static double _calculateDistance(LatLng start, LatLng end) {
-    const Distance distance = Distance();
-    return distance.as(LengthUnit.Kilometer, start, end);
+  static double _calculateDistance(Coordinate start, Coordinate end) {
+    return Geolocator.distanceBetween(
+      start.latitude, 
+      start.longitude, 
+      end.latitude, 
+      end.longitude
+    ) / 1000; // Convert meters to kilometers
   }
   
-  static double _calculateBearing(LatLng start, LatLng end) {
+  static double _calculateBearing(Coordinate start, Coordinate end) {
     final lat1Rad = start.latitude * (pi / 180);
     final lat2Rad = end.latitude * (pi / 180);
     final deltaLonRad = (end.longitude - start.longitude) * (pi / 180);
@@ -44,8 +59,8 @@ class OfflineRoutingService {
     return Duration(minutes: (hours * 60).round());
   }
   
-  static List<LatLng> _generateRoutePoints(LatLng start, LatLng end) {
-    final points = <LatLng>[];
+  static List<Coordinate> _generateRoutePoints(Coordinate start, Coordinate end) {
+    final points = <Coordinate>[];
     points.add(start);
     
     // Generate intermediate points for a smoother route visualization
@@ -54,7 +69,7 @@ class OfflineRoutingService {
       final ratio = i / numPoints;
       final lat = start.latitude + (end.latitude - start.latitude) * ratio;
       final lng = start.longitude + (end.longitude - start.longitude) * ratio;
-      points.add(LatLng(lat, lng));
+      points.add(Coordinate(lat, lng));
     }
     
     points.add(end);
@@ -62,8 +77,8 @@ class OfflineRoutingService {
   }
   
   static List<RouteInstruction> _generateInstructions(
-    LatLng start, 
-    LatLng end, 
+    Coordinate start, 
+    Coordinate end, 
     double distance, 
     double bearing
   ) {
@@ -79,7 +94,7 @@ class OfflineRoutingService {
     
     // Middle instruction (if distance > 1km)
     if (distance > 1.0) {
-      final midPoint = LatLng(
+      final midPoint = Coordinate(
         (start.latitude + end.latitude) / 2,
         (start.longitude + end.longitude) / 2,
       );
@@ -116,7 +131,7 @@ class OfflineRoutingService {
 }
 
 class RouteResult {
-  final List<LatLng> routePoints;
+  final List<Coordinate> routePoints;
   final List<RouteInstruction> instructions;
   final double totalDistance; // in kilometers
   final Duration estimatedDuration;
@@ -133,7 +148,7 @@ class RouteInstruction {
   final String instruction;
   final double distance; // in kilometers
   final RouteManeuver maneuver;
-  final LatLng position;
+  final Coordinate position;
   
   RouteInstruction({
     required this.instruction,

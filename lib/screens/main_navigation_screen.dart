@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/voice_assistant_service.dart';
 import 'services_map_screen.dart';
+import 'service_list_screen.dart';
 import 'data_test_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const VoiceAssistantScreen(),
     const DataTestScreen(),
     const ServicesMapScreen(),
+    const ServiceListScreen(),
   ];
 
   @override
@@ -58,7 +60,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.map_outlined),
               activeIcon: Icon(Icons.map, size: 28),
-              label: 'Nearby Services',
+              label: 'Map View',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.list),
+              activeIcon: Icon(Icons.list, size: 28),
+              label: 'List View',
             ),
           ],
         ),

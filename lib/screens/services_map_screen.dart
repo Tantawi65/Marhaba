@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/service_location.dart';
 import '../services/location_service.dart';
-import 'navigation_screen.dart';
 
 class ServicesMapScreen extends StatefulWidget {
   const ServicesMapScreen({super.key});
@@ -13,31 +10,24 @@ class ServicesMapScreen extends StatefulWidget {
   State<ServicesMapScreen> createState() => _ServicesMapScreenState();
 }
 
-class _ServicesMapScreenState extends State<ServicesMapScreen>
-    with TickerProviderStateMixin {
-  late TabController _tabController;
-  late MapController _mapController;
-  
-  Country _selectedCountry = Country.turkey;
+class _ServicesMapScreenState extends State<ServicesMapScreen> {
   ServiceType _selectedServiceType = ServiceType.hospital;
   Position? _userLocation;
   List<ServiceLocation> _currentServices = [];
+  ServiceLocation? _nearestService;
   bool _isLoading = false;
   String _searchQuery = '';
+  
+  // Simple map view properties for Turkey
+  double _mapCenterLat = 39.9334; // Turkey center
+  double _mapCenterLng = 32.8597;
+  double _mapZoom = 6.0;
   
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: ServiceType.values.length, vsync: this);
-    _mapController = MapController();
     _loadInitialData();
     _getCurrentLocation();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadInitialData() async {
@@ -48,38 +38,43 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
 
   Future<void> _loadServices() async {
     try {
-      print('🔍 Loading services for ${_selectedCountry.displayName} - ${_selectedServiceType.displayName}');
+      print('🔍 Loading ${_selectedServiceType.displayName} services for Turkey');
       
-      List<ServiceLocation> services;
-      if (_userLocation != null) {
-        print('📍 User location available: ${_userLocation!.latitude}, ${_userLocation!.longitude}');
-        // Get nearby services sorted by distance
-        services = await LocationService.getNearbyServices(
-          _selectedCountry,
-          _selectedServiceType,
-          _userLocation!.latitude,
-          _userLocation!.longitude,
-          radiusKm: 50.0, // 50km radius
-        );
-      } else {
-        print('🌍 No user location, loading all services of type: ${_selectedServiceType.key}');
-        // Get all services of selected type
-        services = await LocationService.getServicesByType(_selectedCountry, _selectedServiceType);
+      List<ServiceLocation> services = await LocationService.getServicesByType(
+        Country.turkey, 
+        _selectedServiceType
+      );
+      
+      // If user location is available, sort by distance and find nearest
+      if (_userLocation != null && services.isNotEmpty) {
+        services.sort((a, b) {
+          final distanceA = LocationService.calculateDistance(
+            _userLocation!.latitude, _userLocation!.longitude,
+            a.latitude, a.longitude
+          );
+          final distanceB = LocationService.calculateDistance(
+            _userLocation!.latitude, _userLocation!.longitude,
+            b.latitude, b.longitude
+          );
+          return distanceA.compareTo(distanceB);
+        });
+        
+        // Set nearest service
+        _nearestService = services.first;
+        print('📍 Nearest ${_selectedServiceType.displayName}: ${_nearestService!.name}');
       }
       
-      print('✅ Loaded ${services.length} services of type: ${_selectedServiceType.key}');
-      if (services.isNotEmpty) {
-        print('📍 First service: ${services.first.name} (${services.first.type})');
-      } else {
-        print('❌ No services found for type: ${_selectedServiceType.key}');
-      }
+      print('✅ Loaded ${services.length} ${_selectedServiceType.displayName} services');
       
       setState(() {
         _currentServices = services;
       });
     } catch (e) {
       print('❌ Error loading services: $e');
-      print('📍 Stack trace: ${StackTrace.current}');
+      setState(() {
+        _currentServices = [];
+        _nearestService = null;
+      });
     }
   }
 
@@ -107,44 +102,26 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
 
       Position position = await Geolocator.getCurrentPosition();
       print('📍 Got user location: ${position.latitude}, ${position.longitude}');
+      
       setState(() {
         _userLocation = position;
+        _mapCenterLat = position.latitude;
+        _mapCenterLng = position.longitude;
+        _mapZoom = 12.0;
       });
       
-      // Reload services with location
+      // Reload services with location for sorting
       await _loadServices();
-      
-      // Center map on user location
-      _mapController.move(
-        LatLng(position.latitude, position.longitude),
-        12.0,
-      );
     } catch (e) {
       print('❌ Error getting location: $e');
     }
   }
 
   void _onServiceTypeChanged(ServiceType serviceType) {
-    print('🔄 Changing service type to: ${serviceType.key}');
     setState(() {
       _selectedServiceType = serviceType;
     });
     _loadServices();
-  }
-
-  void _onCountryChanged(Country country) {
-    print('🔄 Changing country to: ${country.displayName}');
-    setState(() {
-      _selectedCountry = country;
-    });
-    _loadServices();
-    
-    // Center map on country
-    final center = LocationService.getCountryCenter(country);
-    _mapController.move(
-      LatLng(center['lat']!, center['lng']!),
-      6.0,
-    );
   }
 
   List<ServiceLocation> get _filteredServices {
@@ -166,6 +143,13 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
   }
 
   Widget _buildServiceDetailsSheet(ServiceLocation service) {
+    final distance = _userLocation != null 
+        ? LocationService.calculateDistance(
+            _userLocation!.latitude, _userLocation!.longitude,
+            service.latitude, service.longitude
+          )
+        : null;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.3,
@@ -203,7 +187,7 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            _getServiceIcon(_getServiceTypeFromString(service.type)),
+                            _getServiceIcon(_selectedServiceType),
                             color: const Color(0xFF2E7D59),
                             size: 24,
                           ),
@@ -221,7 +205,7 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
                                 ),
                               ),
                               Text(
-                                _getServiceTypeFromString(service.type).displayName,
+                                _selectedServiceType.displayName,
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 14,
@@ -238,29 +222,15 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
                     _buildDetailRow(Icons.location_on, 'Address', service.fullAddress),
                     const SizedBox(height: 12),
                     
-                    // Phone (if available)
-                    if (service.raw['phone'] != null && service.raw['phone'].toString().isNotEmpty)
-                      _buildDetailRow(Icons.phone, 'Phone', service.raw['phone'].toString()),
-                    if (service.raw['phone'] != null && service.raw['phone'].toString().isNotEmpty) const SizedBox(height: 12),
-                    
-                    // Hours (if available)
-                    if (service.raw['hours'] != null && service.raw['hours'].toString().isNotEmpty)
-                      _buildDetailRow(Icons.access_time, 'Hours', service.raw['hours'].toString()),
-                    if (service.raw['hours'] != null && service.raw['hours'].toString().isNotEmpty) const SizedBox(height: 12),
-                    
                     // Distance (if user location available)
-                    if (_userLocation != null)
+                    if (distance != null) ...[
                       _buildDetailRow(
                         Icons.straighten,
                         'Distance',
-                        '${LocationService.calculateDistance(
-                          _userLocation!.latitude,
-                          _userLocation!.longitude,
-                          service.latitude,
-                          service.longitude,
-                        ).toStringAsFixed(1)} km',
+                        '${distance.toStringAsFixed(1)} km',
                       ),
-                    if (_userLocation != null) const SizedBox(height: 20),
+                      const SizedBox(height: 20),
+                    ],
                     
                     // Action Buttons
                     const SizedBox(height: 20),
@@ -270,11 +240,12 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
                           child: OutlinedButton.icon(
                             onPressed: () {
                               Navigator.pop(context);
-                              // Center map on this service
-                              _mapController.move(
-                                LatLng(service.latitude, service.longitude),
-                                15.0,
-                              );
+                              // Center map view on this service
+                              setState(() {
+                                _mapCenterLat = service.latitude;
+                                _mapCenterLng = service.longitude;
+                                _mapZoom = 15.0;
+                              });
                             },
                             icon: const Icon(Icons.center_focus_strong),
                             label: const Text('Show on Map'),
@@ -291,9 +262,9 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => _openDirections(service),
+                            onPressed: () => _showDirections(service),
                             icon: const Icon(Icons.navigation),
-                            label: const Text('Navigate'),
+                            label: const Text('Get Directions'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF2E7D59),
                               foregroundColor: Colors.white,
@@ -354,58 +325,181 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
     );
   }
 
-  void _openDirections(ServiceLocation service) {
+  void _showDirections(ServiceLocation service) {
     Navigator.pop(context); // Close bottom sheet
     
     if (_userLocation != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => NavigationScreen(
-            destination: service,
-            userLocation: _userLocation,
+      // Simple directions display
+      final distance = LocationService.calculateDistance(
+        _userLocation!.latitude, _userLocation!.longitude,
+        service.latitude, service.longitude
+      );
+      
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Directions to ${service.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Distance: ${distance.toStringAsFixed(1)} km'),
+              const SizedBox(height: 8),
+              Text('Address: ${service.fullAddress}'),
+              const SizedBox(height: 8),
+              Text('Coordinates: ${service.latitude.toStringAsFixed(4)}, ${service.longitude.toStringAsFixed(4)}'),
+            ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Location permission required for navigation'),
+          content: Text('Location permission required for directions'),
           backgroundColor: Colors.orange,
         ),
       );
     }
   }
 
-  ServiceType _getServiceTypeFromString(String typeString) {
-    switch (typeString.toLowerCase()) {
-      case 'hospital':
-        return ServiceType.hospital;
-      case 'school':
-        return ServiceType.school;
-      case 'shelter':
-        return ServiceType.shelter;
-      case 'food_bank':
-      case 'food':
-        return ServiceType.foodBank;
-      default:
-        return ServiceType.hospital;
+  IconData _getServiceIcon(ServiceType type) {
+    switch (type) {
+      case ServiceType.hospital:
+        return Icons.local_hospital;
+      case ServiceType.school:
+        return Icons.school;
+      case ServiceType.shelter:
+        return Icons.home;
+      case ServiceType.foodBank:
+        return Icons.restaurant;
     }
   }
 
-  IconData _getServiceIcon(ServiceType type) {
-    switch (type.key) {
-      case 'hospital':
-        return Icons.local_hospital;
-      case 'school':
-        return Icons.school;
-      case 'shelter':
-        return Icons.home;
-      case 'food_bank':
-        return Icons.restaurant;
-      default:
-        return Icons.place;
-    }
+  // Simple offline map view using containers and positioning
+  Widget _buildOfflineMapView() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.green[50]!,
+            Colors.green[100]!,
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // Background map representation
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+            ),
+            child: CustomPaint(
+              painter: TurkeyMapPainter(),
+            ),
+          ),
+          
+          // Service markers
+          ..._filteredServices.take(20).map((service) {
+            final screenPos = _latLngToScreenPosition(service.latitude, service.longitude);
+            return Positioned(
+              left: screenPos['x']! - 20,
+              top: screenPos['y']! - 20,
+              child: GestureDetector(
+                onTap: () => _showServiceDetails(service),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _getServiceIcon(_selectedServiceType),
+                    color: const Color(0xFF2E7D59),
+                    size: 20,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+          
+          // User location marker
+          if (_userLocation != null) ...[
+            () {
+              final userScreenPos = _latLngToScreenPosition(_userLocation!.latitude, _userLocation!.longitude);
+              return Positioned(
+                left: userScreenPos['x']! - 15,
+                top: userScreenPos['y']! - 15,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Map<String, double> _latLngToScreenPosition(double lat, double lng) {
+    // Turkey bounds: approximately 36°N to 42°N latitude, 26°E to 45°E longitude
+    final screenSize = MediaQuery.of(context).size;
+    
+    // Clamp coordinates to Turkey bounds
+    final clampedLat = lat.clamp(36.0, 42.0);
+    final clampedLng = lng.clamp(26.0, 45.0);
+    
+    // Normalize coordinates to 0-1 range
+    final normalizedLat = (clampedLat - 36.0) / (42.0 - 36.0);
+    final normalizedLng = (clampedLng - 26.0) / (45.0 - 26.0);
+    
+    // Calculate zoom factor
+    final zoomFactor = (_mapZoom / 10.0).clamp(0.5, 3.0);
+    
+    // Calculate center offset based on current map center
+    final centerLatNorm = (_mapCenterLat - 36.0) / (42.0 - 36.0);
+    final centerLngNorm = (_mapCenterLng - 26.0) / (45.0 - 26.0);
+    
+    // Apply zoom and pan
+    final screenX = (normalizedLng - centerLngNorm) * screenSize.width * zoomFactor + screenSize.width / 2;
+    final screenY = (centerLatNorm - normalizedLat) * screenSize.height * zoomFactor + screenSize.height / 2;
+    
+    return {
+      'x': screenX.clamp(0.0, screenSize.width),
+      'y': screenY.clamp(0.0, screenSize.height),
+    };
   }
 
   @override
@@ -414,7 +508,7 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
       backgroundColor: const Color(0xFFF8F9FA),
       body: Column(
         children: [
-          // Header with country selector and search
+          // Header with search and service type selector
           Container(
             padding: const EdgeInsets.fromLTRB(16, 50, 16, 16),
             decoration: const BoxDecoration(
@@ -423,12 +517,12 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
             ),
             child: Column(
               children: [
-                // Title and Country Selector
+                // Title and nearest service info
                 Row(
                   children: [
                     const Expanded(
                       child: Text(
-                        'Nearby Services',
+                        'Turkey Services Map',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -436,34 +530,25 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
+                    if (_nearestService != null && _userLocation != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'Nearest: ${LocationService.calculateDistance(
+                            _userLocation!.latitude, _userLocation!.longitude,
+                            _nearestService!.latitude, _nearestService!.longitude
+                          ).toStringAsFixed(1)}km',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
-                      child: DropdownButton<Country>(
-                        value: _selectedCountry,
-                        onChanged: (Country? country) {
-                          if (country != null) _onCountryChanged(country);
-                        },
-                        underline: const SizedBox(),
-                        dropdownColor: const Color(0xFF2E7D59),
-                        style: const TextStyle(color: Colors.white),
-                        items: Country.values.map((Country country) {
-                          return DropdownMenuItem<Country>(
-                            value: country,
-                            child: Text(
-                              country.displayName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -484,7 +569,7 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
                   child: TextField(
                     onChanged: (value) => setState(() => _searchQuery = value),
                     decoration: InputDecoration(
-                      hintText: 'Search services...',
+                      hintText: 'Search ${_selectedServiceType.displayName.toLowerCase()}...',
                       hintStyle: TextStyle(color: Colors.grey[600]),
                       prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
                       border: InputBorder.none,
@@ -499,114 +584,50 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
           // Service Type Tabs
           Container(
             color: Colors.white,
-            child: TabBar(
-              controller: _tabController,
-              onTap: (index) => _onServiceTypeChanged(ServiceType.values[index]),
-              indicatorColor: const Color(0xFF2E7D59),
-              labelColor: const Color(0xFF2E7D59),
-              unselectedLabelColor: Colors.grey[600],
-              tabs: ServiceType.values.map((serviceType) {
-                return Tab(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _getServiceIcon(serviceType),
-                        size: 20,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: ServiceType.values.map((serviceType) {
+                  final isSelected = serviceType == _selectedServiceType;
+                  return GestureDetector(
+                    onTap: () => _onServiceTypeChanged(serviceType),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFF2E7D59) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(25),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        serviceType.displayName,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          
-          // Map
-          Expanded(
-            child: Stack(
-              children: [
-                FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: LatLng(
-                      LocationService.getCountryCenter(_selectedCountry)['lat']!,
-                      LocationService.getCountryCenter(_selectedCountry)['lng']!,
-                    ),
-                    initialZoom: 6.0,
-                    minZoom: 5.0,
-                    maxZoom: 18.0,
-                  ),
-                  children: [
-                    // Map Tiles
-                    TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.example.marhaba',
-                    ),
-                    
-                    // Service Markers
-                    MarkerLayer(
-                      markers: _filteredServices.map((service) {
-                        return Marker(
-                          point: LatLng(service.latitude, service.longitude),
-                          width: 40,
-                          height: 40,
-                          child: GestureDetector(
-                            onTap: () => _showServiceDetails(service),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                _getServiceIcon(_getServiceTypeFromString(service.type)),
-                                color: const Color(0xFF2E7D59),
-                                size: 20,
-                              ),
-                            ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _getServiceIcon(serviceType),
+                            size: 20,
+                            color: isSelected ? Colors.white : const Color(0xFF2E7D59),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                    
-                    // User Location Marker
-                    if (_userLocation != null)
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: LatLng(_userLocation!.latitude, _userLocation!.longitude),
-                            width: 30,
-                            height: 30,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 3),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
+                          const SizedBox(width: 8),
+                          Text(
+                            serviceType.displayName,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isSelected ? Colors.white : const Color(0xFF2E7D59),
                             ),
                           ),
                         ],
                       ),
-                  ],
-                ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          
+          // Map Area
+          Expanded(
+            child: Stack(
+              children: [
+                _buildOfflineMapView(),
                 
                 // Loading Indicator
                 if (_isLoading)
@@ -618,17 +639,6 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
                       ),
                     ),
                   ),
-                
-                // Floating Action Button for User Location
-                Positioned(
-                  bottom: 20,
-                  right: 20,
-                  child: FloatingActionButton(
-                    onPressed: _getCurrentLocation,
-                    backgroundColor: const Color(0xFF2E7D59),
-                    child: const Icon(Icons.my_location, color: Colors.white),
-                  ),
-                ),
                 
                 // Services Count Badge
                 Positioned(
@@ -648,7 +658,7 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
                       ],
                     ),
                     child: Text(
-                      '${_filteredServices.length} ${_selectedServiceType.displayName.toLowerCase()}${_filteredServices.length != 1 ? 's' : ''}',
+                      '${_filteredServices.length} ${_selectedServiceType.displayName.toLowerCase()}',
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF2E7D59),
@@ -657,6 +667,45 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
                     ),
                   ),
                 ),
+                
+                // Location Button
+                Positioned(
+                  bottom: 20,
+                  right: 20,
+                  child: FloatingActionButton(
+                    onPressed: _getCurrentLocation,
+                    backgroundColor: const Color(0xFF2E7D59),
+                    child: const Icon(Icons.my_location, color: Colors.white),
+                  ),
+                ),
+                
+                // Nearest Service Card
+                if (_nearestService != null)
+                  Positioned(
+                    bottom: 80,
+                    left: 20,
+                    right: 80,
+                    child: Card(
+                      child: ListTile(
+                        leading: Icon(
+                          _getServiceIcon(_selectedServiceType),
+                          color: const Color(0xFF2E7D59),
+                        ),
+                        title: Text(
+                          _nearestService!.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          'Nearest ${_selectedServiceType.displayName}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () => _showServiceDetails(_nearestService!),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -664,4 +713,50 @@ class _ServicesMapScreenState extends State<ServicesMapScreen>
       ),
     );
   }
+}
+
+// Simple painter for Turkey map outline
+class TurkeyMapPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.green[200]!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    
+    final path = Path();
+    
+    // Simple Turkey outline approximation
+    final centerX = size.width * 0.5;
+    final centerY = size.height * 0.5;
+    final width = size.width * 0.6;
+    final height = size.height * 0.3;
+    
+    path.addOval(Rect.fromCenter(
+      center: Offset(centerX, centerY),
+      width: width,
+      height: height,
+    ));
+    
+    canvas.drawPath(path, paint);
+    
+    // Add some geographical features
+    final featurePaint = Paint()
+      ..color = Colors.green[300]!
+      ..style = PaintingStyle.fill;
+    
+    // Add some dots to represent major cities
+    final cities = [
+      Offset(centerX * 0.8, centerY * 0.9), // Istanbul
+      Offset(centerX, centerY), // Ankara
+      Offset(centerX * 1.4, centerY * 1.2), // Antalya
+    ];
+    
+    for (final city in cities) {
+      canvas.drawCircle(city, 3, featurePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

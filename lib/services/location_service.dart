@@ -91,7 +91,14 @@ class LocationService {
     }
 
     try {
-      final String dataFile = 'data/${country.displayName}/${country.displayName.toLowerCase()}_${category.toLowerCase()}.json';
+      // Use specific Turkey JSON files
+      String dataFile;
+      if (country == Country.turkey) {
+        dataFile = 'data/Turkey/turkey_${category.toLowerCase()}s.json';
+      } else {
+        dataFile = 'data/${country.displayName}/${country.displayName.toLowerCase()}_${category.toLowerCase()}.json';
+      }
+      
       print('📁 Loading data file: $dataFile');
       final String jsonString = await rootBundle.loadString(dataFile);
       print('📄 File loaded, size: ${jsonString.length} characters');
