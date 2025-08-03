@@ -9,21 +9,38 @@ A Flutter-based voice assistant application designed to help refugees, migrants,
 - **🤖 AI-Powered**: Uses Gemma 3 model for intelligent responses
 - **🔒 Fully Offline**: Complete privacy - no data leaves your device
 - **📍 Location Services**: Find nearby hospitals, shelters, schools, and food banks
-- **🗺️ Offline Maps**: Navigate to essential services without internet
+- **🗺️ **NEW** Offline Maps**: Custom Turkey map with 300k+ services - no internet required!
 - **🌐 Multilingual Support**: Designed with international users in mind
 - **📱 Cross-Platform**: Works on Android, iOS, and desktop
+
+## 🗺️ **NEW** Offline Map Features
+
+**Complete rebuild of mapping system for true offline functionality:**
+
+- **🏥 300,000+ Services**: Hospitals (43k), Schools (307k), Shelters (96k) across Turkey
+- **📱 Custom Map**: Hand-drawn Turkey map using Flutter's CustomPainter
+- **📍 Smart Location**: Automatic nearest service detection and distance calculation
+- **🔍 Search & Filter**: Find services by name, type, or location
+- **🎯 Interactive Markers**: Tap any marker for detailed service information
+- **📊 Service Details**: Complete address, coordinates, and directions
+- **⚡ High Performance**: Optimized for large datasets, shows 20 closest services
+- **🔋 Battery Efficient**: Lightweight implementation without heavy map dependencies
+
+### Map Views Available
+1. **Interactive Map View**: Visual map with service markers and user location
+2. **List View**: Comprehensive service listings sorted by distance
+3. **Service Details**: Detailed information sheets for each service
 
 ## 🏥 Offline Location Services
 
 Marhaba includes comprehensive offline databases for essential services:
 
-- **🏥 Hospitals & Medical Centers**: Emergency and routine healthcare facilities
-- **🏠 Emergency Shelters**: Safe accommodation options
-- **🏫 Schools & Education**: Educational institutions and language learning centers
-- **🍽️ Food Banks**: Food assistance and meal programs
+- **🏥 Hospitals & Medical Centers**: Emergency and routine healthcare facilities (43,482 locations)
+- **🏠 Emergency Shelters**: Safe accommodation options (96,349 locations)
+- **🏫 Schools & Education**: Educational institutions and language learning centers (307,744 locations)
 
 ### Supported Countries
-- **🇹🇷 Turkey**: Complete dataset with 40,000+ service locations
+- **🇹🇷 Turkey**: **Complete dataset with 446,575+ service locations** - fully offline maps and data
 - **🇩🇪 Germany**: Major cities and regions (expanding)
 
 ## 🧠 AI Integration
