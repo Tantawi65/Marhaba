@@ -1,0 +1,79 @@
+[
+  {
+    "id": "node/123456",
+    "name": "Charité – Universitätsmedizin Berlin",
+    "type": "hospital",
+    "city": "Berlin",
+    "district": "Mitte",
+    "street": "Charitéplatz",
+    "number": "1",
+    "latitude": 52.525592,
+    "longitude": 13.377022,
+    "raw": {
+      "@id": "node/123456",
+      "addr:city": "Berlin",
+      "addr:street": "Charitéplatz",
+      "addr:housenumber": "1",
+      "amenity": "hospital",
+      "healthcare": "hospital",
+      "name": "Charité – Universitätsmedizin Berlin"
+    }
+  },
+  {
+    "id": "node/234567",
+    "name": "Goethe-Gymnasium",
+    "type": "school",
+    "city": "Berlin",
+    "district": "Charlottenburg",
+    "street": "Gasteiner Str.",
+    "number": "23",
+    "latitude": 52.502568,
+    "longitude": 13.328661,
+    "raw": {
+      "@id": "node/234567",
+      "addr:city": "Berlin",
+      "addr:street": "Gasteiner Str.",
+      "addr:housenumber": "23",
+      "amenity": "school",
+      "name": "Goethe-Gymnasium"
+    }
+  },
+  {
+    "id": "node/345678",
+    "name": "Berliner Tafel",
+    "type": "food_bank",
+    "city": "Berlin",
+    "district": "Kreuzberg",
+    "street": "Beusselstraße",
+    "number": "44n-46",
+    "latitude": 52.531677,
+    "longitude": 13.349525,
+    "raw": {
+      "@id": "node/345678",
+      "addr:city": "Berlin",
+      "addr:street": "Beusselstraße",
+      "addr:housenumber": "44n-46",
+      "social_facility": "food_bank",
+      "name": "Berliner Tafel"
+    }
+  },
+  {
+    "id": "node/456789",
+    "name": "Notunterkunft für Geflüchtete",
+    "type": "shelter",
+    "city": "Berlin",
+    "district": "Tempelhof",
+    "street": "Columbiadamm",
+    "number": "160",
+    "latitude": 52.473580,
+    "longitude": 13.402717,
+    "raw": {
+      "@id": "node/456789",
+      "addr:city": "Berlin",
+      "addr:street": "Columbiadamm",
+      "addr:housenumber": "160",
+      "social_facility": "shelter",
+      "name": "Notunterkunft für Geflüchtete"
+    }
+  }
+]
