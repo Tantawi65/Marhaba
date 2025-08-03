@@ -1,0 +1,68 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+title: "[FEATURE] "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! This helps make Marhaba more useful for refugees and displaced people.
+
+  - type: dropdown
+    id: feature-type
+    attributes:
+      label: Feature Type
+      description: What type of feature is this?
+      options:
+        - New service type (e.g., legal aid, transportation)
+        - UI/UX improvement
+        - Accessibility enhancement
+        - Translation/Language support
+        - Performance improvement
+        - Integration with external service
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: Problem Description
+      description: What problem does this feature solve? Who would benefit from it?
+      placeholder: Describe the problem this feature would solve...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed feature in detail
+      placeholder: Describe your solution...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any alternative solutions?
+
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impact on Target Users
+      description: How would this feature help refugees and displaced people?
+      options:
+        - label: Improves access to essential services
+        - label: Works better in emergency situations
+        - label: Reduces language barriers
+        - label: Works better offline/with poor connectivity
+        - label: Improves accessibility for users with disabilities
+        - label: Helps with cultural navigation
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, mockups, or examples about the feature request.

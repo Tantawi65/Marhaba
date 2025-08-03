@@ -1,0 +1,91 @@
+name: Data Contribution
+description: Contribute service location data for a country/region
+title: "[DATA] "
+labels: ["data-contribution", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for contributing service location data! This directly helps people find essential services.
+
+  - type: input
+    id: country-region
+    attributes:
+      label: Country/Region
+      description: Which country or region is this data for?
+      placeholder: e.g., "Germany - Berlin", "Turkey - Istanbul"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: service-types
+    attributes:
+      label: Service Types
+      description: What types of services are you contributing?
+      options:
+        - label: Hospitals & Medical Centers
+        - label: Emergency Shelters
+        - label: Schools & Educational Institutions
+        - label: Food Banks & Meal Programs
+        - label: Legal Aid Services
+        - label: Employment Centers
+        - label: Other (specify in description)
+
+  - type: textarea
+    id: data-source
+    attributes:
+      label: Data Source
+      description: Where did you get this data? (Government databases, NGO lists, etc.)
+      placeholder: Please provide the source and any relevant links...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: data-format
+    attributes:
+      label: Data Format
+      description: What format is your data in?
+      options:
+        - JSON (ready to use)
+        - CSV/Excel spreadsheet
+        - Text list
+        - PDF document
+        - Web scraping needed
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: data-size
+    attributes:
+      label: Data Size
+      description: Approximately how many service locations?
+      placeholder: e.g., "~500 hospitals", "50 shelters"
+
+  - type: textarea
+    id: data-description
+    attributes:
+      label: Data Description
+      description: Describe the data you're contributing
+      placeholder: |
+        - What services are included?
+        - Geographic coverage
+        - Data completeness
+        - Last updated date
+
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: Data Verification
+      description: Please confirm
+      options:
+        - label: I have verified this data is accurate and current
+        - label: I have permission to share this data publicly
+        - label: The data includes coordinates (latitude/longitude) or addresses
+        - label: I can provide updates if the data changes
+
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: Additional Information
+      description: Any other relevant information about this data contribution
